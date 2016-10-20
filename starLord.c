@@ -18,7 +18,17 @@ long long connections = 0;
 
 int main(int argc, char * argv[])
 {
-    printf("Hello World");        
+    char buf[BUF_MAX];
+    
+    int ret;
+
+    struct config cfg;
+
+    // parse args into config structure
+    ret = parse_args(argc, argv, &cfg);
+    if(ret!=0)
+        return 1;
+
 }
 
 int parse_args(int argc, char * argv[], struct config * cfg)
