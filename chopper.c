@@ -35,6 +35,9 @@ int main(int argc, char * argv[])
 int parse_args(int argc, char * argv[], struct config * cfg)
 {
     int usage = 0;
+	int pFlag,sFlag;
+
+
 
     // show usage on zero arguments
     if (argc == 1 || strcmp(argv[1], "-") == 0)
@@ -42,12 +45,13 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 
     // loop through all arguments with getopt and set variables as needed
     int c;
-    while ((c = getopt(argc, argv, "p:s:va")) != -1)
+    while ((c = getopt(argc, argv, "p:s:va:")) != -1)
     {
         switch (c)
         {
             case 'p':
                 cfg->port = optarg;
+				pFlag=1;
                 break;
 
 			case 'a':
@@ -56,10 +60,11 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 
 			case 's':
                 cfg->servAdd = optarg;
+				sFlag=1;
                 break;
 
 			case 'v':
-                cfg->view = 0;
+                cfg->view = 1;
                 break;
 
             case '?':
@@ -77,6 +82,21 @@ int parse_args(int argc, char * argv[], struct config * cfg)
         fprintf(stderr, "Usage: %s -p <port> -s <server> [-a <message>] [-v (http view call)]\n", argv[0]);
         return 1;
     }
+	if (!pFlag&&!sFlag)
+	{
+		fprintf(stderr, "Missing required port and server flags -p -s\n");
+		return 1;
+	}
+	if (!pFlag)
+	{
+		fprintf(stderr, "Missing required port flag -p\n");
+		return 1;
+	}
+	if (!sFlag)
+	{
+		fprintf(stderr, "Missing required server flag -s\n");
+		return 1;
+	}
 
     return 0;
 }
