@@ -82,20 +82,8 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 
 void terminate(int signum)
 {
-    printf("%lld\t", connections);
-
-    struct node * ptr = set_first(&st);
-    while(ptr != NULL)
-    {
-        printf("%s, ", set_data(ptr));
-        ptr = set_next(ptr);
-    }
-
-    printf("\n");
-
-    set_free(&st);
+   printf("Place Holer");
 
     freeaddrinfo(addr_list);
-
     exit(0);
 }
