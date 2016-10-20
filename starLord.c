@@ -4,6 +4,7 @@
 
 struct config
 {
+    const char * addr;
     const char * port;
 };
 
@@ -18,10 +19,10 @@ long long connections = 0;
 
 int main(int argc, char * argv[])
 {
-    char buf[BUF_MAX];
+    //char buf[BUF_MAX];
     
+    // handles return values from our functions for error checking
     int ret;
-
     struct config cfg;
 
     // parse args into config structure
@@ -29,6 +30,38 @@ int main(int argc, char * argv[])
     if(ret!=0)
         return 1;
 
+    struct addrinfo * addr;
+
+    //create tcp addrinfo for port and check for success
+    ret = create_tcp_addrinfo(&addr_list, cfg.addr, cfg.port);
+
+    if(ret != 0)
+        return 1;
+
+    // grab first address
+    addr = addr_list;
+
+    // bind to a socket and check for success
+    int sockfd = create_socket(addr);
+
+    if(sockfd < 0)
+        return 1;
+
+    // bind socket
+    ret = bind_addr(sockfd, addr);
+
+    if (ret != 0)
+        return 1;
+
+    // listen on socket
+    ret = listen_socket(sockfd);
+
+    if (ret != 0)
+        return 1;
+
+    set_init(&st);
+
+    signal(SIGINT, &terminate);
 }
 
 int parse_args(int argc, char * argv[], struct config * cfg)
