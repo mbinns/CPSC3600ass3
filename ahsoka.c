@@ -33,6 +33,11 @@ int main(int argc, char * argv[])
     if(ret!=0)
         return 1;
 
+
+	
+
+
+
 }
 
 int parse_args(int argc, char * argv[], struct config * cfg)
@@ -50,6 +55,7 @@ int parse_args(int argc, char * argv[], struct config * cfg)
     int c;
     while ((c = getopt(argc, argv, "p:s:a:")) != -1)
     {
+	
         switch (c)
         {
             case 'p':
@@ -75,6 +81,7 @@ int parse_args(int argc, char * argv[], struct config * cfg)
                 usage = 1;
                 break;
         }
+		
     }
 
     if (usage)

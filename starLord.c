@@ -1,28 +1,47 @@
 #include "set.h"
 #include "common.h"
-#define CONN_MAX 1000
+
 
 struct config
 {
     const char * addr;
     const char * port;
 };
+struct request
+{
+	const char * method;
+	const char * path;
+	const char * protocol;
+	const char * host;
+};
+
+struct response
+{
+	//have to have below this
+	const char * close;
+	const char * date;
+	const char * modified;
+	const char * content_len;
+	const char * content_typ;
+	const char * server_head;
+};
+
+
 
 int parse_args(int argc, char * argv[], struct config * cfg);
+
 void terminate(int signum);
-void respond();
 
 //Keep state information
 struct set st;
 struct addrinfo * addr_list;
 
-// connection file descriptor
-int connfd;
-
 long long connections = 0;
 
 int main(int argc, char * argv[])
 {
+    //char buf[BUF_MAX];
+    
     // handles return values from our functions for error checking
     int ret;
     struct config cfg;
@@ -64,23 +83,6 @@ int main(int argc, char * argv[])
     set_init(&st);
 
     signal(SIGINT, &terminate);
-    
-    // accept incoming connections
-    while(1)
-    {
-        struct sockaddr remote;
-        socklen_t rlen = sizeof(remote);
-        connfd = tcp_accept(sockfd,&remote,&rlen);
-
-        connections++;
-        set_add(&st,get_addr(&remote));
-
-        printf("%lld: Hello :)\n",connections);
-        respond();
-    }
-
-    terminate(0);
-    return 0;
 }
 
 int parse_args(int argc, char * argv[], struct config * cfg)
@@ -120,19 +122,51 @@ int parse_args(int argc, char * argv[], struct config * cfg)
     return 0;
 }
 
-void respond()
-{
-    char buf[99999]; 
+int parse_head(char * msg, struct request * req){
+	const char b[1] = " ";
+	const char s[2] = ":";
+	const char r[3] = "\r";
+	const char n[3] = "\n";
+	char * token;
+	
+	/* get the first token */
+	token = strtok(msg,b);
+	strcpy(req->method,token);
+	
+	if(!strcmp(req->method, "GET")){
+		fprintf(stderr, "Invalid method error 405");
+		return 1;
+	}
+	token = strtok(NULL,b);
+	strcpy(req->path,token);
 
-    int len = read(connfd, buf, sizeof(buf));
-    if(len <= 0)
-        printf("Len is less than or = zero");
-        len = write(connfd,buf,len);
+	token = strtok(NULL,r);
+	strcpy(req->protocol,token);
+	
+	/* walk through other tokens */
+	while( token != NULL )
+	{
+		token = strtok(NULL, s);
+		if(strcmp(token, "Host")){
+			req->host = strtok(NULL,r);
+			if(req->host == NULL){
+				fprintf(stderr, "Error. No Host Provided.");
+				return 1;
+			}
+		}else
+			token = strtok(NULL,s);
+		
+	}
+	if(req->host == NULL){
+		fprintf(stderr, "Error. No Host Provided.");
+		return 1;
+	}
+	return 0;
 }
 
 void terminate(int signum)
 {
-    printf("\n%lld\t", connections);
+    printf("%lld\t", connections);
 
     struct node * ptr = set_first(&st);
     while(ptr != NULL)
