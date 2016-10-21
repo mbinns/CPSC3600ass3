@@ -10,18 +10,19 @@ struct config
 
 int parse_args(int argc, char * argv[], struct config * cfg);
 void terminate(int signum);
-int connfd[CONN_MAX];
+void respond();
 
 //Keep state information
 struct set st;
 struct addrinfo * addr_list;
 
+// connection file descriptor
+int connfd;
+
 long long connections = 0;
 
 int main(int argc, char * argv[])
 {
-    //char buf[BUF_MAX];
-    
     // handles return values from our functions for error checking
     int ret;
     struct config cfg;
@@ -64,36 +65,18 @@ int main(int argc, char * argv[])
 
     signal(SIGINT, &terminate);
     
-    // set all connections slots to -1 saying their are no connections
-    int slot = 0;
-    for(int i = 0; i < CONN_MAX; i++)
-    {
-        connfd[i] = -1;
-    }
-
     // accept incoming connections
     while(1)
     {
         struct sockaddr remote;
         socklen_t rlen = sizeof(remote);
+        connfd = tcp_accept(sockfd,&remote,&rlen);
 
-        connfd[slot] = tcp_accept(sockfd,&remote,&rlen);
-        
-        if(connfd[slot] < 0)
-        {
-           fprintf(stderr,"Could no accept connection");
-        }
-        else
-        {
-            connections++;
-            set_add(&st,get_addr(&remote));
-            if(fork() == 0)
-            {
-                printf("Hello :)");
-                exit(0);
-            }
-        }        
-        while (connfd[slot]!=-1) slot = (slot+1)%CONN_MAX;
+        connections++;
+        set_add(&st,get_addr(&remote));
+
+        printf("%lld: Hello :)\n",connections);
+        respond();
     }
 
     terminate(0);
@@ -135,6 +118,16 @@ int parse_args(int argc, char * argv[], struct config * cfg)
     }
 
     return 0;
+}
+
+void respond()
+{
+    char buf[99999]; 
+
+    int len = read(connfd, buf, sizeof(buf));
+    if(len <= 0)
+        printf("Len is less than or = zero");
+        len = write(connfd,buf,len);
 }
 
 void terminate(int signum)
