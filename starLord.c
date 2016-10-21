@@ -71,11 +71,11 @@ int main(int argc, char * argv[])
         struct sockaddr remote;
         socklen_t rlen = sizeof(remote);
         connfd = tcp_accept(sockfd,&remote,&rlen);
-
+        
         connections++;
         set_add(&st,get_addr(&remote));
 
-        printf("%lld: Hello :)\n",connections);
+        printf("Connection:%lld\n",connections);
         respond();
     }
 
@@ -125,9 +125,9 @@ void respond()
     char buf[99999]; 
 
     int len = read(connfd, buf, sizeof(buf));
-    if(len <= 0)
-        printf("Len is less than or = zero");
-        len = write(connfd,buf,len);
+    printf("\n%s\n",buf);
+    len = write(connfd,buf,len);
+    close(connfd);
 }
 
 void terminate(int signum)
