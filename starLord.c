@@ -4,7 +4,7 @@
 struct config
 {
     const char * port;
-};
+}config;
 
 struct request
 {
@@ -12,7 +12,7 @@ struct request
 	char * path;
 	char * protocol;
 	char * host;
-};
+}request;
 
 struct response
 {
@@ -23,7 +23,7 @@ struct response
 	char * content_len;
 	char * content_typ;
 	char * server_head;
-};
+}response;
 
 int parse_args(int argc, char * argv[], struct config * cfg);
 int parse_head(char * , struct request * );
@@ -33,13 +33,15 @@ void terminate(int signum);
 //Keep state information
 struct set st;
 struct addrinfo * addr_list;
-//struct request * req;
+struct request * req;
 
 long long connections = 0;
 int connfd;
 
 int main(int argc, char * argv[])
 {
+    req = malloc(sizeof(request));
+
     char buf[BUF_MAX];
     
     // handles return values from our functions for error checking
@@ -100,9 +102,7 @@ int main(int argc, char * argv[])
         if( len <= 0)
             continue;
 
-        //int ret = parse_head(buf, req);
-        if(ret == 1)
-            return 1;
+        ret = parse_head(buf, req);
 
     }
 
@@ -148,9 +148,9 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 }
 
 int parse_head(char * msg, struct request * req){
-	const char b[1] = " ";
-	const char s[2] = ":";
-	const char r[3] = "\r";
+	const char * b = " ";
+	const char * s = ":";
+	const char * r = "\r";
 	//const char n[3] = "\n";
 
 	char * token;
@@ -158,8 +158,8 @@ int parse_head(char * msg, struct request * req){
 	/* get the first token */
 	token = strtok(msg,b);
 	req->method = token;
-	
-	if(!strcmp(req->method, "GET")){
+    
+	if(strcmp(req->method, "GET")){
 		fprintf(stderr, "Invalid method error 405");
 		return 1;
 	}
