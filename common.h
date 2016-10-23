@@ -14,7 +14,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define BUF_MAX 65535
+#define BUF_MAX 1024
 
 // The get_wall_time routine gets a representation of the current wall time in seconds.
 double get_wall_time();

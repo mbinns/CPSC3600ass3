@@ -1,47 +1,47 @@
 #include "set.h"
 #include "common.h"
 
-
 struct config
 {
     const char * addr;
     const char * port;
 };
+
 struct request
 {
-	const char * method;
-	const char * path;
-	const char * protocol;
-	const char * host;
+	char * method;
+	char * path;
+	char * protocol;
+	char * host;
 };
 
 struct response
 {
 	//have to have below this
-	const char * close;
-	const char * date;
-	const char * modified;
-	const char * content_len;
-	const char * content_typ;
-	const char * server_head;
+	char * close;
+	char * date;
+	char * modified;
+	char * content_len;
+	char * content_typ;
+	char * server_head;
 };
 
-
-
 int parse_args(int argc, char * argv[], struct config * cfg);
+int parse_head(char * , struct request * );
 
 void terminate(int signum);
 
 //Keep state information
 struct set st;
 struct addrinfo * addr_list;
+//struct request * req;
 
 long long connections = 0;
 int connfd;
 
 int main(int argc, char * argv[])
 {
-    //char buf[BUF_MAX];
+    char buf[BUF_MAX];
     
     // handles return values from our functions for error checking
     int ret;
@@ -96,6 +96,15 @@ int main(int argc, char * argv[])
         set_add(&st,get_addr(&remote));
 
         printf("Connection:%lld\n",connections);
+        
+        int len = read(connfd, buf, sizeof(buf));
+        if( len <= 0)
+            continue;
+
+        //int ret = parse_head(buf, req);
+        if(ret == 1)
+            return 1;
+
     }
 
     terminate(0);
@@ -143,7 +152,7 @@ int parse_head(char * msg, struct request * req){
 	const char b[1] = " ";
 	const char s[2] = ":";
 	const char r[3] = "\r";
-	const char n[3] = "\n";
+	//const char n[3] = "\n";
 	char * token;
 	
 	/* get the first token */
