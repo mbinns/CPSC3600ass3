@@ -9,10 +9,10 @@ struct config
 };
 struct request
 {
-	const char * method;
-	const char * path;
-	const char * protocol;
-	const char * host;
+	 char * method;
+	 char * path;
+	 char * protocol;
+	 char * host;
 };
 
 struct response
@@ -126,22 +126,22 @@ int parse_head(char * msg, struct request * req){
 	const char b[1] = " ";
 	const char s[2] = ":";
 	const char r[3] = "\r";
-	const char n[3] = "\n";
+	/*const char n[3] = "\n";*/
 	char * token;
 	
 	/* get the first token */
 	token = strtok(msg,b);
-	strcpy(req->method,token);
+	req->method = token;
 	
 	if(!strcmp(req->method, "GET")){
 		fprintf(stderr, "Invalid method error 405");
 		return 1;
 	}
 	token = strtok(NULL,b);
-	strcpy(req->path,token);
+	req->path=token;
 
 	token = strtok(NULL,r);
-	strcpy(req->protocol,token);
+	req->protocol=token;
 	
 	/* walk through other tokens */
 	while( token != NULL )
