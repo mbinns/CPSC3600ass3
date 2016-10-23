@@ -3,7 +3,6 @@
 
 struct config
 {
-    const char * addr;
     const char * port;
 };
 
@@ -55,7 +54,7 @@ int main(int argc, char * argv[])
     struct addrinfo * addr;
 
     //create tcp addrinfo for port and check for success
-    ret = create_tcp_addrinfo(&addr_list, cfg.addr, cfg.port);
+    ret = create_tcp_addrinfo(&addr_list, NULL, cfg.port);
 
     if(ret != 0)
         return 1;
