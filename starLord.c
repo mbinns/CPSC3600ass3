@@ -101,7 +101,7 @@ int main(int argc, char * argv[])
         int len = read(connfd, buf, sizeof(buf));
         if( len <= 0)
             continue;
-
+		
         ret = parse_head(buf, req);
 
     }
@@ -150,41 +150,46 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 int parse_head(char * msg, struct request * req){
 	const char * b = " ";
 	const char * s = ":";
-	const char * r = "\r";
+	const char * r = "\r\n";
 	//const char n[3] = "\n";
 
 	char * token;
 	
 	/* get the first token */
 	token = strtok(msg,b);
+	
 	req->method = token;
-    
+   
 	if(strcmp(req->method, "GET")){
-		fprintf(stderr, "Invalid method error 405");
+		fprintf(stderr, "Invalid method error 405\n");
 		return 1;
 	}
+	 
 	token = strtok(NULL,b);
 	req->path=token;
-
+	
 	token = strtok(NULL,r);
 	req->protocol=token;
 	
 	/* walk through other tokens */
-	while( token != NULL )
+	while( strcmp(token,"\0") )
 	{
+		
 		token = strtok(NULL, s);
+		
 		if(strcmp(token, "Host")){
 			req->host = strtok(NULL,r);
 			if(req->host == NULL){
-				fprintf(stderr, "Error. No Host Provided.");
+				fprintf(stderr, "Error. No Host Provided.\n");
 				return 1;
 			}
 		}else
 			token = strtok(NULL,s);
 		
 	}
+	
 	if(req->host == NULL){
-		fprintf(stderr, "Error. No Host Provided.");
+		fprintf(stderr, "Error. No Host Provided.\n");
 		return 1;
 	}
 	return 0;
