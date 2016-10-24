@@ -26,6 +26,51 @@ struct response
 	char * server_head;
 }response;
 
+/* HTTP response and header for a successful request.  */
+static char* ok_response =
+  "HTTP/1.0 200 OK\n"
+  "Content-type: text/html\n"
+  "\n";
+
+/* HTTP response, header, and body indicating that the we didn't
+   understand the request.  */
+static char* bad_request_response = 
+  "HTTP/1.0 400 Bad Request\n"
+  "Content-type: text/html\n"
+  "\n"
+  "<html>\n"
+  " <body>\n"
+  "  <h1>Bad Request</h1>\n"
+  "  <p>This server did not understand your request.</p>\n"
+  " </body>\n"
+  "</html>\n";
+
+/* HTTP response, header, and body template indicating that the
+   requested document was not found.  */
+static char* not_found_response = 
+  "HTTP/1.0 404 Not Found\n"
+  "Content-type: text/html\n"
+  "\n"
+  "<html>\n"
+  " <body>\n"
+  "  <h1>Not Found</h1>\n"
+  "  <p>The requested URL %s was not found on this server.</p>\n"
+  " </body>\n"
+  "</html>\n";
+
+/* HTTP response, header, and body template indicating that the
+   method was not understood.  */
+static char* bad_method_response = 
+  "HTTP/1.0 405 Method Not Implemented\n"
+  "Content-type: text/html\n"
+  "\n"
+  "<html>\n"
+  " <body>\n"
+  "  <h1>Method Not Implemented</h1>\n"
+  "  <p>The method %s is not implemented by this server.</p>\n"
+  " </body>\n"
+  "</html>\n";
+
 int parse_args(int argc, char * argv[], struct config * cfg);
 int parse_head(char * , struct request * );
 void respond(int status);
@@ -103,7 +148,7 @@ int main(int argc, char * argv[])
         if( len <= 0)
             continue;
 	
-        printf("%s", buf);
+        //printf("%s", buf);
         ret = parse_head(buf, req);
         
         printf("Method:%s\n", req->method);
@@ -203,20 +248,27 @@ int parse_head(char * msg, struct request * req){
 void respond(int status)
 {
     int len;
+    char response[BUF_MAX];
     //TODO write the response headers
     switch(status)
     {
         case 200:
-            len = write(connfd, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\nhello!",sizeof("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\nhello!"));
+            len = write(connfd, ok_response, strlen(ok_response));
             close(connfd);
             break;
         case 400:
-            len = write(connfd, "Error. No Host Provided.\n",sizeof("Error. No Host Provided."));
+            len = write(connfd, bad_request_response, strlen(bad_request_response)); 
+            close(connfd);
             break;
         case 404:
+            snprintf(response, sizeof(response), not_found_response, req->path);
+            len = write(connfd, response, strlen(response));
+            close(connfd);
             break;
         case 405:
-            len = write(connfd, "Invalid method error 405\n",30);
+            snprintf(response, sizeof(response), bad_method_response, req->method);
+            len = write(connfd, response, strlen(response));
+            close(connfd);
             break;
     }
 }
