@@ -18,81 +18,82 @@ struct request
 struct response
 {
 	//have to have below this
-	char * close;
-	char * date;
-	char * modified;
-	char * content_len;
-	char * content_typ;
-	char * server_head;
+	char date[BUF_MAX];
+	char modified[BUF_MAX];
+	char content_len[BUF_MAX];
+	char content_typ[BUF_MAX];
+	char server_head[BUF_MAX];
 }response;
 
 /* HTTP response and header for a successful request.  */
 static char* ok_response =
-  "HTTP/1.1 200 OK\n"
-  "Content-type: text/html\n"
-  "\n"
-  "<html>\n"
-  " <body>\n"
-  "  <h1>HTTP/1.1 200 OK</h1>\n"
-  "  <p>This server understood your request</p>\n"
-  " </body>\n"
-  "</html>\n";
+  "HTTP/1.1 200 OK\r\n"
+  "Content-type: text/html\r\n"
+  "Connection: close\r\n"
+  "Date: %s\r\n"
+  "Last-Modified: %s\r\n"
+  //"Content-Length: %d\r\n\r\n"
+  "\r\n"
+  "%s";
 
 /* HTTP response, header, and body indicating that the we didn't
    understand the request.  */
 static char* bad_request_response = 
-  "HTTP/1.1 400 Bad Request\n"
-  "Content-type: text/html\n"
-  "\n"
-  "<html>\n"
-  " <body>\n"
-  "  <h1>Bad Request</h1>\n"
-  "  <p>This server did not understand your request.</p>\n"
-  " </body>\n"
-  "</html>\n";
+  "HTTP/1.1 400 Bad Request\r\n"
+  "Content-type: text/html\r\n"
+  "Connection: close\r\n"
+  "Date: %s\r\n"
+  "Last-Modified: %s\r\n"
+  "Server: Group15/v1.0\r\n\r\n";
 
 /* HTTP response, header, and body template indicating that the
    requested document was not found.  */
 static char* not_found_response = 
-  "HTTP/1.1 404 Not Found\n"
-  "Content-type: text/html\n"
-  "\n"
-  "<html>\n"
-  " <body>\n"
-  "  <h1>Not Found</h1>\n"
-  "  <p>The requested URL %s was not found on this server.</p>\n"
-  " </body>\n"
-  "</html>\n";
+  "HTTP/1.1 404 Not Found\r\n"
+  "Content-type: text/html\r\n"
+  "Connection: close\r\n"
+  "Date: %s\r\n"
+  "Last-Modified: %s\r\n"
+  "Server: Group15/v1.0\r\n\r\n";
 
 /* HTTP response, header, and body template indicating that the
    method was not understood.  */
 static char* bad_method_response = 
-  "HTTP/1.1 405 Method Not Implemented\n"
-  "Content-type: text/html\n"
-  "\n"
-  "<html>\n"
-  " <body>\n"
-  "  <h1>Method Not Implemented</h1>\n"
-  "  <p>The method %s is not implemented by this server.</p>\n"
-  " </body>\n"
-  "</html>\n";
+  "HTTP/1.1 405 Method Not Implemented\r\n"
+  "Content-type: text/html\r\n"
+  "Connection: close\r\n"
+  "Allow: GET\r\n"
+  "Date: %s\r\n"
+  "Last-Modified: %s\r\n"
+  "Server: Group15/v1.0\r\n\r\n";
 
 int parse_args(int argc, char * argv[], struct config * cfg);
 int parse_head(char * , struct request * );
 void respond(int status);
 void terminate(int signum);
+int buf_add(char *);
+int buf_view(char *);
 
 //Keep state information
 struct set st;
 struct addrinfo * addr_list;
 struct request * req;
+struct response * resp;
 
 long long connections = 0;
 int connfd;
+char buffer[BUF_MAX];
 
 int main(int argc, char * argv[])
 {
     req = malloc(sizeof(request));
+    req->method = NULL;
+    req->path = NULL;
+    req->data = NULL;
+    req->protocol = NULL;
+    req->host = NULL;
+
+    resp = malloc(sizeof(response));
 
     char buf[BUF_MAX];
     
@@ -138,6 +139,13 @@ int main(int argc, char * argv[])
 
     signal(SIGINT, &terminate);
     
+    // set some response info
+    char date[BUF_MAX] = "Date: %a, %d %b %Y %H:%M:%S %Z";
+    
+    time_t sec = time(NULL);
+    struct tm * tm = gmtime(&sec);
+
+    strftime(resp->date, sizeof(resp->date),date,tm);
     // accept incoming connections
     while(1)
     {
@@ -147,7 +155,8 @@ int main(int argc, char * argv[])
         
         connections++;
         set_add(&st,get_addr(&remote));
-
+        
+        //TODO Remove print
         printf("Connection:%lld\n",connections);
         
         int len = read(connfd, buf, sizeof(buf));
@@ -156,7 +165,8 @@ int main(int argc, char * argv[])
 	
         //printf("%s", buf);
         ret = parse_head(buf, req);
-        
+       
+        //TODO Remove print statements
         printf("Method:%s\n", req->method);
         printf("Path:%s\n", req->path);
         printf("Data:%s\n", req->data);
@@ -173,6 +183,25 @@ int main(int argc, char * argv[])
     return 0;
 }
 
+int buf_add(char * msg)
+{
+    char mod[BUF_MAX] = "Date: %a, %d %b %Y %H:%M:%S %Z";
+    
+    time_t sec = time(NULL);
+    struct tm * tm = gmtime(&sec);
+
+    strftime(resp->modified, sizeof(resp->modified),mod,tm);
+    
+    if(msg != NULL)
+    {
+        strcat(buffer,req->host);
+        strcat(buffer,"\n");
+        strcat(buffer,msg);
+        strcat(buffer,"\n");
+    }
+    return 1;
+}
+
 int parse_args(int argc, char * argv[], struct config * cfg)
 {
     int usage = 0;
@@ -182,6 +211,7 @@ int parse_args(int argc, char * argv[], struct config * cfg)
         usage = 1;
 
     // loop through all arguments with getopt and set variables as needed
+
     int c;
     while ((c = getopt(argc, argv, "p:")) != -1)
     {
@@ -217,7 +247,11 @@ int parse_head(char * msg, struct request * req){
 	char *token;
 	/* get the first token */
 	token = strtok(msg,b);
-	
+    if(token == NULL)
+    {
+        respond(400);
+    }
+
 	req->method = token;
    
 	if(strcmp(req->method, "GET") != 0){
@@ -229,10 +263,14 @@ int parse_head(char * msg, struct request * req){
 
 	token = strtok(NULL,"\r\n");
 	req->protocol=token;
+    if(strcmp(req->protocol, "HTTP/1.1") != 0)
+    {
+        respond(400);
+    }
 
 	token=strstr(req->path,"add");
         if(token==NULL) {
-	   token=strstr(req->path,"view);
+	   token=strstr(req->path,"view");
 	   if(token==NULL) {
 	      respond(404);
 	      return 1;
@@ -240,7 +278,7 @@ int parse_head(char * msg, struct request * req){
 	}
 
 	token=strstr(req->path,"view");
-        if(token==NULL) {
+       if(token==NULL) {
 	   token=strstr(req->path,"add");
 	   if(token==NULL) {
 	      respond(404);
@@ -258,7 +296,7 @@ int parse_head(char * msg, struct request * req){
         }
 		if(strcmp(token, "\nHost") == 0)
         {
-			req->host = strtok(NULL,"\r\n");
+			req->host = strtok(NULL,"\r\n")+1;
             break;
         }
 	}
@@ -268,10 +306,11 @@ int parse_head(char * msg, struct request * req){
 		return 1;
 	}
     
-    token = strstr(req->path,"?");
+    token = strstr(req->path,"data=");
     if(token != NULL)
     {
-        req->data = token;
+        token = strtok(token, "&\r\n");
+        req->data = token+5;
     }
 
     respond(200);
@@ -282,11 +321,15 @@ void respond(int status)
 {
     int len;
     char response[BUF_MAX];
-    //TODO write the response headers
     switch(status)
     {
         case 200:
-            len = write(connfd, ok_response, strlen(ok_response));
+            if(strstr(req->path, "add"))
+            {
+                len = buf_add(req->data);
+            }
+            snprintf(response, sizeof(response), ok_response,resp->date,resp->modified, buffer);
+            len = write(connfd, response, strlen(response));
             close(connfd);
             break;
         case 400:
@@ -294,12 +337,12 @@ void respond(int status)
             close(connfd);
             break;
         case 404:
-            snprintf(response, sizeof(response), not_found_response, req->path);
+            snprintf(response, sizeof(response), not_found_response,resp->date,resp->modified, req->path);
             len = write(connfd, response, strlen(response));
             close(connfd);
             break;
         case 405:
-            snprintf(response, sizeof(response), bad_method_response, req->method);
+            snprintf(response, sizeof(response), bad_method_response,resp->date,resp->modified, req->method);
             len = write(connfd, response, strlen(response));
             close(connfd);
             break;

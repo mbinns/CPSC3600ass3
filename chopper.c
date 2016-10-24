@@ -7,14 +7,21 @@ struct config
 	const char * message;
 	const char * servAdd;
     const char * host;
+    char http_stat[BUF_MAX];
 	int view;
+    int add;
 
 }config;
+
+struct MemoryStruct {
+  char *memory;
+  size_t size;
+}MemoryStruct;
 
 int parse_args(int argc, char * argv[], struct config * cfg);
 void terminate(int signum);
 long int send_get_request();
-
+void parse_status(int);
 // elapsed time
 double elapsed;
 
@@ -22,83 +29,130 @@ double elapsed;
 // counter for message attempts
 int attempt = 0;
 
-// allocate buffer like a string
-char buf[BUF_MAX];
-
 //Keep state information
 struct addrinfo * addr_list;
 struct config cfg;
 
 long long connections = 0;
+CURL * curl; 
+char server_buf[BUF_MAX];
+
+static char* get_add = "GET /add?data=%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
+static char* get_view = "GET /view? HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
+static char* http_status = "%s %d";
 
 int main(int argc, char * argv[])
 {
-    //char buf[BUF_MAX];
-    
     int ret;
 
     // parse args into config structure
     ret = parse_args(argc, argv, &cfg);
+    curl = curl_easy_init();
+
     if(ret!=0)
         return 1;
     //Handles the termination signal
     signal(SIGINT, &terminate);
 
-/*
     //Starts the message timer
     double timer = get_wall_time();
 
-    // allocate buffer like a string
-    buf[len] = '\0';
-
-    // receive the return message from the server and check for error
-    //ret = read(sockfd, buf, len);
+    long int status_code = send_get_request();
+    parse_status(status_code);
+    attempt++;
 
     //Calculates the difference in time from send to recive
     timer = get_wall_time() - timer;
 
-    if(ret > 0)
-    {
-        attempt++;
-    }
-
     elapsed += timer;
-*/
-
-    long int status_code = send_get_request();
-    printf("Status code: %ld", status_code);
 
     // frees the address list
     terminate(0);
     return 0;
 }
 
+void parse_status(int status)
+{
+    char stat[BUF_MAX];
+    switch(status)
+        {
+            case 200:
+                snprintf(stat, sizeof(stat), http_status,"HTTP OK",200);
+                break;
+            case 400:
+                snprintf(stat, sizeof(stat), http_status,"HTTP Bad Request",400);
+                break;
+            case 404:
+                snprintf(stat, sizeof(stat), http_status,"HTTP Not Found",404);
+                break;
+            case 405:
+                snprintf(stat, sizeof(stat), http_status,"HTTP Method Not Implemented",405);
+                break;
+        }
+    strcpy(cfg.http_stat,stat);
+}
+size_t get_data(void *ptr, size_t size, size_t nmemb, void *stream){
+  size_t realsize = size * nmemb;
+  struct MemoryStruct *mem = (struct MemoryStruct *)stream;
+ 
+  mem->memory = realloc(mem->memory, mem->size + realsize + 1);
+  if(mem->memory == NULL) {
+    /* out of memory! */ 
+    printf("not enough memory (realloc returned NULL)\n");
+    return 0;
+  }
+ 
+  memcpy(&(mem->memory[mem->size]), ptr, realsize);
+  mem->size += realsize;
+  mem->memory[mem->size] = 0;
+    
+  return realsize;
+}
+
 long int send_get_request()
 {
     char URI[BUF_MAX];
-    long http_code = 0;
     snprintf(URI, sizeof(URI),"%s:%s",cfg.servAdd,cfg.port);
 
-    CURL * curl = curl_easy_init();
+    char REQUEST[BUF_MAX];
+    if(cfg.view)
+    {
+        snprintf(REQUEST, sizeof(REQUEST),get_view,cfg.message,cfg.host);
+    }else if(cfg.add)
+    {
+        snprintf(REQUEST, sizeof(REQUEST),get_add,cfg.message,cfg.host);
+    }
+
+    long http_code = 0;
+    //To hold memory
+    struct MemoryStruct chunk;
+    
+    //Will be grown by realloc
+    chunk.memory = malloc(1);
+    //No data
+    chunk.size = 0;
+
     if(curl) {
+      //Specify URL
       curl_easy_setopt(curl, CURLOPT_URL, URI);
      
       /* use a GET to fetch this */
-      curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET /iasd HTTP/1.1\r\nHost: www.example.com\r\nConnection: close\r\n\r\n");
+      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, get_data);
+      curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+      curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, REQUEST);
      
       /* Perform the request */
       curl_easy_perform(curl);
       curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &http_code);
-
-      curl_easy_cleanup(curl);
     }
+    strcpy(server_buf,chunk.memory);
     return http_code;
 }
 
 int parse_args(int argc, char * argv[], struct config * cfg)
 {
     int usage = 0;
-	int pFlag,sFlag;
+	int pFlag,sFlag,hflag;
 
     // show usage on zero arguments
     if (argc == 1 || strcmp(argv[1], "-") == 0)
@@ -117,6 +171,7 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 
 			case 'a':
                 cfg->message = optarg;
+                cfg->add = 1;
                 break;
 
 			case 's':
@@ -130,6 +185,7 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 
             case 'h':
                 cfg->host = optarg;
+                hflag=1;
                 break;
 
             case '?':
@@ -162,14 +218,26 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 		fprintf(stderr, "Missing required server flag -s\n");
 		return 1;
 	}
+	if (!hflag)
+	{
+		fprintf(stderr, "Missing required host_header flag -h\n");
+		return 1;
+	}
+
+    if(cfg->view)
+    {
+        cfg->add = 1;
+    }
 
     return 0;
 }
 
 void terminate(int signum)
 {
-    //printf("%s",cfg.message);
+    printf("%d\t%.6lf\t%s\t%s\t\n%s\n", attempt, elapsed,cfg.http_stat, cfg.message, server_buf);
 
     freeaddrinfo(addr_list);
+    curl_easy_cleanup(curl);
+
     exit(0);
 }
