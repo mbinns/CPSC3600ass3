@@ -1,6 +1,5 @@
 #include "set.h"
 #include "common.h"
-#include <curl/curl.h>
 
 struct config
 {
@@ -11,6 +10,7 @@ struct request
 {
 	char * method;
 	char * path;
+    char * data;
 	char * protocol;
 	char * host;
 }request;
@@ -159,8 +159,14 @@ int main(int argc, char * argv[])
         
         printf("Method:%s\n", req->method);
         printf("Path:%s\n", req->path);
+        printf("Data:%s\n", req->data);
         printf("Protocol:%s\n", req->protocol);
         printf("Host:%s\n", req->host);
+        req->method = NULL;
+        req->path = NULL;
+        req->data = NULL;
+        req->protocol = NULL;
+        req->host = NULL;
     }
 
     terminate(0);
@@ -207,12 +213,8 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 int parse_head(char * msg, struct request * req){
 
 	char * b = " ";
-    //char * s = ":";
-	//char * r = "\r\n";
-	//const char n[3] = "\n";
 
-	char * token;
-	
+	char *token;
 	/* get the first token */
 	token = strtok(msg,b);
 	
@@ -224,7 +226,7 @@ int parse_head(char * msg, struct request * req){
 	 
 	token = strtok(NULL,b);
 	req->path=token;
-	
+
 	token = strtok(NULL,"\r\n");
 	req->protocol=token;
 	
@@ -242,11 +244,18 @@ int parse_head(char * msg, struct request * req){
             break;
         }
 	}
-	
+
 	if(req->host == NULL){
         respond(400);
 		return 1;
 	}
+    
+    token = strstr(req->path,"?");
+    if(token != NULL)
+    {
+        req->data = token;
+    }
+
     respond(200);
 	return 0;
 }

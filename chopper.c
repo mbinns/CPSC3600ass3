@@ -6,9 +6,10 @@ struct config
     const char * port;
 	const char * message;
 	const char * servAdd;
+    const char * host;
 	int view;
 
-};
+}config;
 
 int parse_args(int argc, char * argv[], struct config * cfg);
 void terminate(int signum);
@@ -40,41 +41,10 @@ int main(int argc, char * argv[])
     ret = parse_args(argc, argv, &cfg);
     if(ret!=0)
         return 1;
-
-    struct addrinfo * addr;
-
-    // create tcp addrinfo for port and check for success
-    ret = create_tcp_addrinfo(&addr_list, cfg.servAdd, cfg.port);
-
-    if(ret != 0)
-        return 1;
-
-    // grab first address
-    addr = addr_list;
-
-    // bind to a socket and check for success
-    int sockfd = create_socket(addr);
-
-    if(sockfd < 0)
-        return 1;
-
-    // message length
-    int len = strlen(cfg.message);
-
     //Handles the termination signal
     signal(SIGINT, &terminate);
 
-    //Estabilsh tcp connection with the server
-    //ret = tcp_connect(sockfd, addr);
-
-    if(ret != 0)
-    {
-        return 1;
-    }
-
-    // sends the tcp message to the server
-    //ret = write(sockfd, cfg.message, len);
-
+/*
     //Starts the message timer
     double timer = get_wall_time();
 
@@ -93,6 +63,7 @@ int main(int argc, char * argv[])
     }
 
     elapsed += timer;
+*/
 
     long int status_code = send_get_request();
     printf("Status code: %ld", status_code);
@@ -113,7 +84,7 @@ long int send_get_request()
       curl_easy_setopt(curl, CURLOPT_URL, URI);
      
       /* use a GET to fetch this */
-      curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+      curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET /iasd HTTP/1.1\r\nHost: www.example.com\r\nConnection: close\r\n\r\n");
      
       /* Perform the request */
       curl_easy_perform(curl);
@@ -135,7 +106,7 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 
     // loop through all arguments with getopt and set variables as needed
     int c;
-    while ((c = getopt(argc, argv, "p:s:va:")) != -1)
+    while ((c = getopt(argc, argv, "p:s:va:h:")) != -1)
     {
         switch (c)
         {
@@ -155,6 +126,10 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 
 			case 'v':
                 cfg->view = 1;
+                break;
+
+            case 'h':
+                cfg->host = optarg;
                 break;
 
             case '?':
