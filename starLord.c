@@ -229,6 +229,24 @@ int parse_head(char * msg, struct request * req){
 
 	token = strtok(NULL,"\r\n");
 	req->protocol=token;
+
+	token=strstr(req->path,"add");
+        if(token==NULL) {
+	   token=strstr(req->path,"view);
+	   if(token==NULL) {
+	      respond(404);
+	      return 1;
+	   }
+	}
+
+	token=strstr(req->path,"view");
+        if(token==NULL) {
+	   token=strstr(req->path,"add");
+	   if(token==NULL) {
+	      respond(404);
+	      return 1;
+	   }
+	}
 	
 	/* walk through other tokens */
 	while(token)
