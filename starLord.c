@@ -27,7 +27,7 @@ struct response
 
 int parse_args(int argc, char * argv[], struct config * cfg);
 int parse_head(char * , struct request * );
-
+int respond(int status);
 void terminate(int signum);
 
 //Keep state information
@@ -191,6 +191,22 @@ int parse_head(char * msg, struct request * req){
 	}
 
 	return 0;
+}
+
+int respond(int status)
+{
+    //TODO write the response headers
+    switch(status)
+    {
+        case 200:
+            break;
+        case 400:
+            break;
+        case 404:
+            break;
+        case 405:
+            break;
+    }
 }
 
 void terminate(int signum)
