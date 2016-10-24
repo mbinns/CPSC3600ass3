@@ -30,7 +30,13 @@ struct response
 static char* ok_response =
   "HTTP/1.0 200 OK\n"
   "Content-type: text/html\n"
-  "\n";
+  "\n"
+  "<html>\n"
+  " <body>\n"
+  "  <h1>HTTP/1.1 200 OK</h1>\n"
+  "  <p>This server understood your request</p>\n"
+  " </body>\n"
+  "</html>\n";
 
 /* HTTP response, header, and body indicating that the we didn't
    understand the request.  */
