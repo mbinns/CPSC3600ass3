@@ -28,7 +28,7 @@ struct response
 
 /* HTTP response and header for a successful request.  */
 static char* ok_response =
-  "HTTP/1.0 200 OK\n"
+  "HTTP/1.1 200 OK\n"
   "Content-type: text/html\n"
   "\n"
   "<html>\n"
@@ -41,7 +41,7 @@ static char* ok_response =
 /* HTTP response, header, and body indicating that the we didn't
    understand the request.  */
 static char* bad_request_response = 
-  "HTTP/1.0 400 Bad Request\n"
+  "HTTP/1.1 400 Bad Request\n"
   "Content-type: text/html\n"
   "\n"
   "<html>\n"
@@ -54,7 +54,7 @@ static char* bad_request_response =
 /* HTTP response, header, and body template indicating that the
    requested document was not found.  */
 static char* not_found_response = 
-  "HTTP/1.0 404 Not Found\n"
+  "HTTP/1.1 404 Not Found\n"
   "Content-type: text/html\n"
   "\n"
   "<html>\n"
@@ -67,7 +67,7 @@ static char* not_found_response =
 /* HTTP response, header, and body template indicating that the
    method was not understood.  */
 static char* bad_method_response = 
-  "HTTP/1.0 405 Method Not Implemented\n"
+  "HTTP/1.1 405 Method Not Implemented\n"
   "Content-type: text/html\n"
   "\n"
   "<html>\n"
