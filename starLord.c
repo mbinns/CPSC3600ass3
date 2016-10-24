@@ -1,5 +1,6 @@
 #include "set.h"
 #include "common.h"
+#include <curl/curl.h>
 
 struct config
 {
@@ -27,7 +28,7 @@ struct response
 
 int parse_args(int argc, char * argv[], struct config * cfg);
 int parse_head(char * , struct request * );
-int respond(int status);
+void respond(int status);
 void terminate(int signum);
 
 //Keep state information
@@ -101,7 +102,8 @@ int main(int argc, char * argv[])
         int len = read(connfd, buf, sizeof(buf));
         if( len <= 0)
             continue;
-		
+	
+        printf("%s", buf);
         ret = parse_head(buf, req);
         
         printf("Method:%s\n", req->method);
@@ -152,9 +154,10 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 }
 
 int parse_head(char * msg, struct request * req){
-	const char * b = " ";
-	const char * s = ":";
-	const char * r = "\r\n\\";
+
+	char * b = " ";
+    //char * s = ":";
+	//char * r = "\r\n";
 	//const char n[3] = "\n";
 
 	char * token;
@@ -165,46 +168,55 @@ int parse_head(char * msg, struct request * req){
 	req->method = token;
    
 	if(strcmp(req->method, "GET") != 0){
-		fprintf(stderr, "Invalid method error 405\n");
-		return 1;
+        respond(405);
 	}
 	 
 	token = strtok(NULL,b);
 	req->path=token;
 	
-	token = strtok(NULL,r);
+	token = strtok(NULL,"\r\n");
 	req->protocol=token;
 	
 	/* walk through other tokens */
 	while(token)
 	{
-		token = strtok(NULL, s);
-		if(strcmp(token, "Host")){
-			req->host = strtok(NULL,r);
+		token = strtok(NULL, ":");
+        if(token == NULL)
+        {
+            break;
+        }
+		if(strcmp(token, "\nHost") == 0)
+        {
+			req->host = strtok(NULL,"\r\n");
             break;
         }
 	}
 	
 	if(req->host == NULL){
-		fprintf(stderr, "Error. No Host Provided.\n");
+        respond(400);
 		return 1;
 	}
-
+    respond(200);
 	return 0;
 }
 
-int respond(int status)
+void respond(int status)
 {
+    int len;
     //TODO write the response headers
     switch(status)
     {
         case 200:
+            len = write(connfd, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\nhello!",sizeof("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\nhello!"));
+            close(connfd);
             break;
         case 400:
+            len = write(connfd, "Error. No Host Provided.\n",sizeof("Error. No Host Provided."));
             break;
         case 404:
             break;
         case 405:
+            len = write(connfd, "Invalid method error 405\n",30);
             break;
     }
 }
