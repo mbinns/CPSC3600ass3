@@ -1,5 +1,5 @@
 CC:=clang
-CFLAGS:= -Wall -g -Wpedantic -Werror
+CFLAGS:= -Wall -g -Wpedantic -Werror -lcurl
 
 all: starLord chopper ahsoka
 

@@ -1,4 +1,5 @@
 #include "common.h"
+#include <curl/curl.h>
 
 struct config
 {
@@ -11,6 +12,7 @@ struct config
 
 int parse_args(int argc, char * argv[], struct config * cfg);
 void terminate(int signum);
+long int send_get_request();
 
 // elapsed time
 double elapsed;
@@ -30,18 +32,14 @@ long long connections = 0;
 
 int main(int argc, char * argv[])
 {
-
-
     //char buf[BUF_MAX];
     
     int ret;
-
 
     // parse args into config structure
     ret = parse_args(argc, argv, &cfg);
     if(ret!=0)
         return 1;
-
 
     struct addrinfo * addr;
 
@@ -67,7 +65,7 @@ int main(int argc, char * argv[])
     signal(SIGINT, &terminate);
 
     //Estabilsh tcp connection with the server
-    ret = tcp_connect(sockfd, addr);
+    //ret = tcp_connect(sockfd, addr);
 
     if(ret != 0)
     {
@@ -75,7 +73,7 @@ int main(int argc, char * argv[])
     }
 
     // sends the tcp message to the server
-    ret = write(sockfd, cfg.message, len);
+    //ret = write(sockfd, cfg.message, len);
 
     //Starts the message timer
     double timer = get_wall_time();
@@ -84,7 +82,7 @@ int main(int argc, char * argv[])
     buf[len] = '\0';
 
     // receive the return message from the server and check for error
-    ret = read(sockfd, buf, len);
+    //ret = read(sockfd, buf, len);
 
     //Calculates the difference in time from send to recive
     timer = get_wall_time() - timer;
@@ -96,10 +94,34 @@ int main(int argc, char * argv[])
 
     elapsed += timer;
 
+    long int status_code = send_get_request();
+    printf("Status code: %ld", status_code);
+
     // frees the address list
     terminate(0);
     return 0;
+}
 
+long int send_get_request()
+{
+    char URI[BUF_MAX];
+    long http_code = 0;
+    snprintf(URI, sizeof(URI),"%s:%s",cfg.servAdd,cfg.port);
+
+    CURL * curl = curl_easy_init();
+    if(curl) {
+      curl_easy_setopt(curl, CURLOPT_URL, URI);
+     
+      /* use a GET to fetch this */
+      curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+     
+      /* Perform the request */
+      curl_easy_perform(curl);
+      curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+      curl_easy_cleanup(curl);
+    }
+    return http_code;
 }
 
 int parse_args(int argc, char * argv[], struct config * cfg)
@@ -171,7 +193,7 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 
 void terminate(int signum)
 {
-    printf("%s",cfg.message);
+    //printf("%s",cfg.message);
 
     freeaddrinfo(addr_list);
     exit(0);

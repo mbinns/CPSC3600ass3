@@ -1,5 +1,6 @@
 #include "set.h"
 #include "common.h"
+#include <curl/curl.h>
 
 struct config
 {
@@ -25,9 +26,60 @@ struct response
 	char * server_head;
 }response;
 
+/* HTTP response and header for a successful request.  */
+static char* ok_response =
+  "HTTP/1.1 200 OK\n"
+  "Content-type: text/html\n"
+  "\n"
+  "<html>\n"
+  " <body>\n"
+  "  <h1>HTTP/1.1 200 OK</h1>\n"
+  "  <p>This server understood your request</p>\n"
+  " </body>\n"
+  "</html>\n";
+
+/* HTTP response, header, and body indicating that the we didn't
+   understand the request.  */
+static char* bad_request_response = 
+  "HTTP/1.1 400 Bad Request\n"
+  "Content-type: text/html\n"
+  "\n"
+  "<html>\n"
+  " <body>\n"
+  "  <h1>Bad Request</h1>\n"
+  "  <p>This server did not understand your request.</p>\n"
+  " </body>\n"
+  "</html>\n";
+
+/* HTTP response, header, and body template indicating that the
+   requested document was not found.  */
+static char* not_found_response = 
+  "HTTP/1.1 404 Not Found\n"
+  "Content-type: text/html\n"
+  "\n"
+  "<html>\n"
+  " <body>\n"
+  "  <h1>Not Found</h1>\n"
+  "  <p>The requested URL %s was not found on this server.</p>\n"
+  " </body>\n"
+  "</html>\n";
+
+/* HTTP response, header, and body template indicating that the
+   method was not understood.  */
+static char* bad_method_response = 
+  "HTTP/1.1 405 Method Not Implemented\n"
+  "Content-type: text/html\n"
+  "\n"
+  "<html>\n"
+  " <body>\n"
+  "  <h1>Method Not Implemented</h1>\n"
+  "  <p>The method %s is not implemented by this server.</p>\n"
+  " </body>\n"
+  "</html>\n";
+
 int parse_args(int argc, char * argv[], struct config * cfg);
 int parse_head(char * , struct request * );
-
+void respond(int status);
 void terminate(int signum);
 
 //Keep state information
@@ -101,9 +153,14 @@ int main(int argc, char * argv[])
         int len = read(connfd, buf, sizeof(buf));
         if( len <= 0)
             continue;
-		
+	
+        //printf("%s", buf);
         ret = parse_head(buf, req);
-
+        
+        printf("Method:%s\n", req->method);
+        printf("Path:%s\n", req->path);
+        printf("Protocol:%s\n", req->protocol);
+        printf("Host:%s\n", req->host);
     }
 
     terminate(0);
@@ -148,9 +205,10 @@ int parse_args(int argc, char * argv[], struct config * cfg)
 }
 
 int parse_head(char * msg, struct request * req){
-	const char * b = " ";
-	const char * s = ":";
-	const char * r = "\r\n";
+
+	char * b = " ";
+    //char * s = ":";
+	//char * r = "\r\n";
 	//const char n[3] = "\n";
 
 	char * token;
@@ -160,39 +218,83 @@ int parse_head(char * msg, struct request * req){
 	
 	req->method = token;
    
-	if(strcmp(req->method, "GET")){
-		fprintf(stderr, "Invalid method error 405\n");
-		return 1;
+	if(strcmp(req->method, "GET") != 0){
+        respond(405);
 	}
 	 
 	token = strtok(NULL,b);
 	req->path=token;
 	
-	token = strtok(NULL,r);
+	token = strtok(NULL,"\r\n");
 	req->protocol=token;
+
+	token=strstr(req->path,"add");
+        if(token==NULL) {
+	   token=strstr(req->path,"view);
+	   if(token==NULL) {
+	      respond(404);
+	      return 1;
+	   }
+	}
+
+	token=strstr(req->path,"view");
+        if(token==NULL) {
+	   token=strstr(req->path,"add");
+	   if(token==NULL) {
+	      respond(404);
+	      return 1;
+	   }
+	}
 	
 	/* walk through other tokens */
-	while( strcmp(token,"\0") )
+	while(token)
 	{
-		
-		token = strtok(NULL, s);
-		
-		if(strcmp(token, "Host")){
-			req->host = strtok(NULL,r);
-			if(req->host == NULL){
-				fprintf(stderr, "Error. No Host Provided.\n");
-				return 1;
-			}
-		}else
-			token = strtok(NULL,s);
-		
+		token = strtok(NULL, ":");
+        if(token == NULL)
+        {
+            break;
+        }
+		if(strcmp(token, "\nHost") == 0)
+        {
+			req->host = strtok(NULL,"\r\n");
+            break;
+        }
 	}
 	
 	if(req->host == NULL){
-		fprintf(stderr, "Error. No Host Provided.\n");
+        respond(400);
 		return 1;
 	}
+    respond(200);
 	return 0;
+}
+
+void respond(int status)
+{
+    int len;
+    char response[BUF_MAX];
+    //TODO write the response headers
+    switch(status)
+    {
+        case 200:
+            len = write(connfd, ok_response, strlen(ok_response));
+            close(connfd);
+            break;
+        case 400:
+            len = write(connfd, bad_request_response, strlen(bad_request_response)); 
+            close(connfd);
+            break;
+        case 404:
+            snprintf(response, sizeof(response), not_found_response, req->path);
+            len = write(connfd, response, strlen(response));
+            close(connfd);
+            break;
+        case 405:
+            snprintf(response, sizeof(response), bad_method_response, req->method);
+            len = write(connfd, response, strlen(response));
+            close(connfd);
+            break;
+    }
 }
 
 void terminate(int signum)
