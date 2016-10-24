@@ -1,4 +1,5 @@
 # CPSC3600ass3
+Allan Austin, Mackenzie Binnis, Matt Beazley, Tyler Fischer 
 HTML Server/Client repo
 
 This file contains a suite of HTTP client server programs. The clients, 
