@@ -1,15 +1,18 @@
 CC:=clang
-CFLAGS:= -Wall -g -Wpedantic -Werror -lcurl
+CFLAGS:=-Wall -g -Wpedantic -Werror -lcurl
 
 all: starLord chopper ahsoka
 
 clean:
 	$(RM) starLord chopper ahsoka *.o
 
-starLord: common.o set.o
+starLord: 
+	$(CC) $(CFLAGS) -o starLord starLord.c set.c common.c
 
-chopper: common.o
+chopper: 
+	$(CC) $(CFLAGS) -o chopper chopper.c common.c
 
-ahsoka: common.o
+ahsoka:
+	$(CC) $(CFLAGS) -o ahsoka ahsoka.c common.c
 
 .PHONY: all clean
